@@ -23,7 +23,7 @@ You are a coding CLI agent looking at this repository. Follow these steps in ord
 
 ### 2. Install the skill
 
-Run ONLY the command for your host CLI:
+Run ONLY the command for your host CLI.
 
 **Claude Code:**
 ```bash
@@ -32,7 +32,6 @@ mkdir -p ~/.claude/skills/pal-council && cp skill/pal-council/SKILL.md ~/.claude
 
 **Codex CLI:**
 ```bash
-# Note: Codex has no official skills subcommand. This copies to the conventional path referenced by config.
 mkdir -p ~/.codex/skills/pal-council && cp skill/pal-council/SKILL.md ~/.codex/skills/pal-council/
 ```
 
@@ -63,14 +62,12 @@ test -f ~/.codex/skills/pal-council/SKILL.md && echo "installed" || echo "not fo
 
 **Gemini CLI:**
 ```bash
-test -f ~/.agents/skills/pal-council/SKILL.md && echo "installed" || echo "not found"
-# If "not found", try: gemini skills list 2>/dev/null | grep pal-council
-# The exact install path may vary by Gemini CLI version (verified on 0.33.0).
+gemini skills list --all 2>/dev/null | grep pal-council
 ```
 
 ## About
 
-Prompt templates derived from [PAL MCP Server](https://github.com/BeehiveInnovations/pal-mcp-server)'s cross-model collaboration tools. Stripped to a single skill file — no MCP server, no separate API keys, no runtime.
+Prompt templates derived from [PAL MCP Server](https://github.com/BeehiveInnovations/pal-mcp-server)'s cross-model collaboration tools. The repository intentionally stays lightweight: one markdown skill file, no MCP server, no separate API keys, no daemon runtime.
 
 Five prompt-based capabilities: **chat**, **challenge**, **council**, **deepthink**, **codereview**
 

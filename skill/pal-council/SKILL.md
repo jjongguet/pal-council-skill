@@ -1,3 +1,8 @@
+---
+name: pal-council
+description: Cross-CLI collaboration skill for consulting Claude Code, Codex CLI, and Gemini CLI via headless calls
+---
+
 # pal-council
 
 Cross-CLI collaboration skill. Consult other coding CLIs from inside your current one.
