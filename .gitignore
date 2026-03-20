@@ -1,0 +1,6 @@
+.claude/
+.omc/
+.omx/
+reference/
+.DS_Store
+__pycache__/
