@@ -1,76 +1,31 @@
 # pal-council
 
-A skill that lets your coding CLI consult other coding CLIs via headless calls.
+A skill that lets coding CLIs consult each other via headless calls.
+
+Works with **Claude Code**, **Codex CLI**, and **Gemini CLI**.
+
+## What's inside
+
+One self-contained skill file: `skill/pal-council/SKILL.md`
+
+Five capabilities: **chat** · **challenge** · **council** · **deepthink** · **codereview**
+
+No MCP server, no API keys, no daemon — just a markdown file.
+
+## Install
+
+Copy `skill/pal-council/SKILL.md` into your CLI's skill directory. That's it.
+
+You're a coding CLI? You already know where your skills live. Grab the file and drop it there.
 
 ## Prerequisites
 
-- At least one other coding CLI must be installed and on PATH:
-  - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`claude`)
-  - [Codex CLI](https://github.com/openai/codex) (`codex`)
-  - [Gemini CLI](https://github.com/google-gemini/gemini-cli) (`gemini`)
-- Each target CLI must already be authenticated with its provider
-- This skill uses each CLI's existing auth — no separate API keys needed
-
-## Installation (for the agent reading this repo)
-
-You are a coding CLI agent looking at this repository. Follow these steps in order.
-
-### 1. Identify your host CLI
-
-- If you are **Claude** → you are Claude Code
-- If you are **Codex** → you are Codex CLI
-- If you are **Gemini** → you are Gemini CLI
-
-### 2. Install the skill
-
-Run ONLY the command for your host CLI.
-
-**Claude Code:**
-```bash
-mkdir -p ~/.claude/skills/pal-council && cp skill/pal-council/SKILL.md ~/.claude/skills/pal-council/
-```
-
-**Codex CLI:**
-```bash
-mkdir -p ~/.codex/skills/pal-council && cp skill/pal-council/SKILL.md ~/.codex/skills/pal-council/
-```
-
-**Gemini CLI:**
-```bash
-gemini skills install ./skill/pal-council --scope user
-```
-
-For project-local install (current project only), use the project-relative path instead:
-```bash
-# Example: Claude Code
-mkdir -p .claude/skills/pal-council && cp skill/pal-council/SKILL.md .claude/skills/pal-council/
-```
-
-### 3. Verify
-
-Confirm the skill file is in place (run ONLY your CLI's command):
-
-**Claude Code:**
-```bash
-test -f ~/.claude/skills/pal-council/SKILL.md && echo "installed" || echo "not found"
-```
-
-**Codex CLI:**
-```bash
-test -f ~/.codex/skills/pal-council/SKILL.md && echo "installed" || echo "not found"
-```
-
-**Gemini CLI:**
-```bash
-gemini skills list --all 2>/dev/null | grep pal-council
-```
+- At least one *other* coding CLI installed and on PATH
+- Each target CLI already authenticated with its provider
+- No extra API keys — the skill reuses each CLI's existing auth
 
 ## About
 
-Prompt templates derived from [PAL MCP Server](https://github.com/BeehiveInnovations/pal-mcp-server)'s cross-model collaboration tools. The repository intentionally stays lightweight: one markdown skill file, no MCP server, no separate API keys, no daemon runtime.
+Prompt templates derived from [PAL MCP Server](https://github.com/BeehiveInnovations/pal-mcp-server)'s cross-model collaboration tools.
 
-Five prompt-based capabilities: **chat**, **challenge**, **council**, **deepthink**, **codereview**
-
-> **Note:** Command flags and output formats may vary across CLI versions. Examples in `SKILL.md` are validated starting points, not immutable contracts.
-
-See `skill/pal-council/SKILL.md` for full usage.
+See `skill/pal-council/SKILL.md` for full usage, CLI reference, and prompt templates.
