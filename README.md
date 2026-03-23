@@ -2,7 +2,7 @@
 
 A skill that lets coding CLIs consult each other via headless calls.
 
-Works with **Claude Code**, **Codex CLI**, and **Gemini CLI**.
+Works with **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Oz CLI**.
 
 ## Important — read before installing
 
@@ -139,6 +139,57 @@ Verify — start a new Claude Code session and check:
 Claude Code also auto-activates the skill when it matches the task context
 (based on the `description` field in SKILL.md frontmatter).
 
+### Oz CLI
+
+Oz CLI discovers skills from `.claude/skills/`, `.codex/skills/`, and `.warp/skills/`
+directories. If you have already installed pal-council for Claude Code
+(`~/.claude/skills/`), Oz will discover it automatically — no separate install needed.
+
+For a dedicated Oz install (if not using Claude Code):
+
+User-level install (available in all projects):
+
+```bash
+git clone --depth 1 https://github.com/jjongguet/pal-council-skill.git /tmp/pal-council-skill
+mkdir -p ~/.warp/skills
+cp -R /tmp/pal-council-skill/skill/pal-council ~/.warp/skills/
+rm -rf /tmp/pal-council-skill
+```
+
+Installed location:
+
+```
+~/.warp/skills/pal-council/SKILL.md
+```
+
+Project-level install (committed to repo, shared with team):
+
+```bash
+git clone --depth 1 https://github.com/jjongguet/pal-council-skill.git /tmp/pal-council-skill
+mkdir -p .warp/skills
+cp -R /tmp/pal-council-skill/skill/pal-council .warp/skills/
+rm -rf /tmp/pal-council-skill
+```
+
+Oz can also invoke the skill directly via the `--skill` flag:
+
+```bash
+oz agent run --skill pal-council --prompt "ask codex about performance"
+```
+
+Verify — start an Oz agent and check:
+
+```
+oz agent run --skill pal-council --prompt "Return OK if the skill loaded"
+```
+
+**PATH note:** Inside Warp Terminal, `oz` is available automatically. In other
+terminals, you may need to add it to PATH:
+
+```bash
+export PATH="/Applications/Warp.app/Contents/Resources/bin:$PATH"
+```
+
 ## Post-install checklist
 
 1. Confirm `pal-council/SKILL.md` exists at the expected installed path
@@ -148,6 +199,7 @@ Claude Code also auto-activates the skill when it matches the task context
    - Codex: type `$` or `/skills` inside a session
    - Claude Code: type `/` and look for `pal-council`
 4. Test with a simple invocation (e.g., "ask codex what 2+2 is")
+   - Oz users can also test with: `oz agent run --skill pal-council --prompt "ask codex what 2+2 is"`
 
 ## Common mistakes
 
@@ -157,12 +209,14 @@ Claude Code also auto-activates the skill when it matches the task context
 | Codex: installed to `~/.codex/skills/` | Skill not discovered | Move to `~/.agents/skills/pal-council/` (current official path) |
 | Nested path like `skills/pal-council-skill/skill/pal-council/` | Skill not discovered | Flatten so `SKILL.md` is at `skills/pal-council/SKILL.md` |
 | Gemini: skills feature not enabled | `gemini skills list` returns nothing | Enable in settings: `{ "experimental": { "skills": true } }` |
+| Oz: `oz` not found / not on PATH | "command not found" when calling Oz from another terminal | Inside Warp Terminal, `oz` is available automatically. In other terminals, add `/Applications/Warp.app/Contents/Resources/bin` to PATH |
 
 ## Prerequisites
 
 - At least one *other* coding CLI installed and on `PATH`
 - Each target CLI already authenticated with its provider
 - No extra API keys; the skill reuses each CLI's existing auth
+- Oz CLI requires a Warp account (free or paid). Authenticate with `oz login` or set `WARP_API_KEY`
 
 ## About
 

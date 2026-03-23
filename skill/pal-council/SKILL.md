@@ -1,17 +1,31 @@
 ---
 name: pal-council
-description: Cross-CLI collaboration skill for consulting Claude Code, Codex CLI, and Gemini CLI via headless calls
+version: 1.1.0
+description: Cross-CLI collaboration skill for consulting Claude Code, Codex CLI, Gemini CLI, and Oz CLI via headless calls
 ---
 
 # pal-council
 
 Cross-CLI collaboration skill. Consult other coding CLIs from inside your current one.
 
-Supported hosts: **Codex CLI**, **Claude Code**, **Gemini CLI**
+Supported hosts: **Codex CLI**, **Claude Code**, **Gemini CLI**, **Oz CLI**
 
-All three CLIs support headless (non-interactive) execution, subagents, and skill systems. This skill uses headless mode to make cross-CLI calls, since native subagent systems only spawn agents within the same CLI family.
+All four CLIs support headless (non-interactive) execution, shell command execution, and skill systems. This skill uses headless mode to make cross-CLI calls — each CLI's agent can run shell commands to invoke another CLI's headless mode.
 
 **Limitations:** Each call is single-turn and stateless. The target CLI does not share your conversation history, open files, or project context — you must include relevant context in the prompt. Prompts are passed as shell arguments, so very large code blocks may hit OS argument length limits.
+
+**Pre-call context gathering:** Before constructing the prompt for the target CLI, gather relevant context from your current environment. The target CLI cannot see your project — you must bridge the gap.
+
+**Auto-gather checklist** (use what's relevant to the task):
+- **Language & framework:** Detect from file extensions, `package.json`, `Cargo.toml`, `go.mod`, etc.
+- **Code snippet:** The specific function, class, or block under discussion
+- **Git diff:** Run `git diff HEAD~1` or `git diff --staged` for recent changes
+- **Error output:** Copy the full error trace or test failure output
+- **File structure:** List relevant files with `ls` or `find` if architecture context helps
+- **Dependencies:** Key imports or dependency versions if relevant
+- **Conversation summary:** Compress the current discussion into 2-3 sentences of context
+
+**Prompt size guidance:** Keep the assembled prompt under 100KB to stay within OS argument limits. For large diffs or files, select the most relevant sections rather than sending everything.
 
 ## When to activate
 
@@ -22,7 +36,7 @@ Use this skill when the user wants to:
 - Get deep analysis on a complex problem from another AI
 - Have another AI review their code
 
-Trigger phrases: "ask codex", "ask claude", "ask gemini", "second opinion", "what would [CLI] say", "challenge this", "council", "consensus", "deepthink", "cross-check", "code review from [CLI]"
+Trigger phrases: "ask codex", "ask claude", "ask gemini", "ask oz", "second opinion", "what would [CLI] say", "challenge this", "council", "consensus", "deepthink", "cross-check", "code review from [CLI]", "debug this with [CLI]", "review this PR with [CLI]", "what would [CLI] think about this code", "test ideas from [CLI]"
 
 ## Identify yourself
 
@@ -30,6 +44,9 @@ Before calling any CLI, determine which one you are:
 - If your identity is **Claude** → you are Claude Code
 - If your identity is **Codex** → you are Codex CLI
 - If your identity is **Gemini** → you are Gemini CLI
+- If your identity is **Oz** (Warp) → you are Oz CLI
+
+**Oz identity note:** Oz is a multi-model orchestration platform — it can run Claude, GPT, and Gemini models under the hood. If you are running inside Oz, the underlying model may identify as Claude, GPT, or Gemini. To detect whether you are running inside Oz rather than directly inside Claude Code, Codex CLI, or Gemini CLI, check for Oz-specific context: Oz agents typically run via `oz agent run` and operate within Warp's agent framework. If a task was initiated by `oz`, you should identify as Oz CLI regardless of which model is powering you.
 
 **Never call yourself.** Only call the CLIs you are NOT running inside.
 
@@ -107,6 +124,42 @@ Example output:
 
 **Exit codes:** 0 = success, 1 = error, 42 = input error, 53 = turn limit exceeded.
 
+### Oz CLI
+
+```bash
+oz agent run -p "<PROMPT>" --output-format json
+```
+
+| Flag | Purpose |
+|---|---|
+| `agent run` | Non-interactive (headless) agent execution |
+| `-p` / `--prompt` | Provide the prompt inline |
+| `--output-format json` | Stream output as NDJSON (one JSON object per line) |
+| `--model <model>` | Override model (optional) |
+| `-C` / `--cwd <dir>` | Set working directory for the agent (optional) |
+| `--skill <SPEC>` | Load a skill as base context (optional) |
+
+**Extract answer:** scan NDJSON lines for objects where `type == "agent"`, then concatenate their `text` fields. This is similar to Codex CLI's JSONL extraction pattern.
+
+Example output:
+```jsonl
+{"type":"system","event_type":"conversation_started","conversation_id":"00000000-..."}
+{"type":"agent","text":"Here is my analysis..."}
+```
+
+**Oz is a multi-model platform:** Unlike the other CLIs, Oz can route to Claude, GPT, and Gemini models. When using pal-council's council capability, be aware that Oz may use the same model family as another council participant. To ensure genuine perspective diversity, consider specifying a different model via `--model`.
+
+**Skill invocation:** Oz can load pal-council directly as a skill:
+```bash
+oz agent run --skill pal-council --prompt "ask codex about performance"
+```
+
+**Exit codes:** Not documented in public Oz CLI docs. Treat non-zero exit as an error.
+
+**PATH note:** Oz ships bundled with Warp Terminal and may not be on PATH by default. Inside Warp Terminal, `oz` is already available. In other terminals:
+- Add to PATH: `export PATH="/Applications/Warp.app/Contents/Resources/bin:$PATH"`
+- Or install standalone via brew (check Warp's official install docs for the current command)
+
 ---
 
 ## Capabilities
@@ -117,6 +170,8 @@ Ask another CLI a question and bring back the answer.
 
 **When:** second opinions, brainstorming, general technical questions, idea validation
 
+**Include in your prompt:** State the language, framework, and relevant constraints. Paste the specific code or config under discussion. If asking about an approach, describe what you've already tried. The more concrete the question, the more useful the response.
+
 **Prompt template:**
 Wrap the user's question with this role preamble, then send to the target CLI:
 
@@ -124,9 +179,9 @@ Wrap the user's question with this role preamble, then send to the target CLI:
 You are a senior engineering thought-partner. Your mission is to brainstorm, validate ideas, and offer well-reasoned second opinions on technical decisions.
 
 SCOPE & FOCUS:
-- Ground every suggestion in the project's current tech stack and constraints.
+- Ground every suggestion in the tech stack and constraints described in the question.
 - Avoid speculative, over-engineered, or unnecessarily abstract designs.
-- Keep proposals practical and directly actionable within the existing architecture.
+- Keep proposals practical and directly actionable based on the information provided.
 - Overengineering is an anti-pattern — avoid solutions that introduce unnecessary abstraction in anticipation of complexity that does not yet exist.
 
 COLLABORATION APPROACH:
@@ -147,6 +202,8 @@ QUESTION:
 Have another CLI critically evaluate a statement, proposal, or design.
 
 **When:** validating assumptions, pre-decision risk check, stress-testing ideas, avoiding groupthink
+
+**Include in your prompt:** State the technical decision or design clearly, including the reasoning behind it. Include: the language/framework, the alternatives you considered, and why you chose this approach. Paste relevant code or architecture diagrams (as text) if applicable.
 
 **Prompt template:**
 
@@ -174,6 +231,8 @@ Stay concise, stay focused, and avoid reflexive agreement. If you disagree, expl
 Gather perspectives from 2+ CLIs on the same question and synthesize a conclusion.
 
 **When:** architecture decisions, technology choices, important design trade-offs, high-stakes technical decisions
+
+**Include in your prompt:** Frame the question with full technical context: language, framework, scale requirements, team size, deployment constraints. Paste relevant code, API contracts, or schema definitions. Each CLI receives this prompt independently — it must be self-contained and specific enough for a cold-start evaluation.
 
 **How:**
 1. Send the **same question** to 2 or more target CLIs, each wrapped in the evaluation prompt below
@@ -253,13 +312,15 @@ Get deep, rigorous analysis from another CLI on a complex problem.
 
 **When:** architecture design, performance issues, complex bug analysis, strategic technical decisions, exploring blind spots
 
+**Include in your prompt:** Describe the problem with full technical depth: language, framework, current architecture, observed symptoms or performance data. Include relevant code snippets, error traces, or profiling output inline. If debugging, include what you've already tried and ruled out. Run `git log --oneline -5` to provide recent change context if relevant.
+
 **Prompt template:**
 
 ```
 You are a senior engineering collaborator working on a complex software problem. Your role is to deepen, validate, and extend the analysis with rigor and clarity.
 
 GUIDELINES:
-1. Begin with context analysis: identify tech stack, languages, frameworks, and project constraints.
+1. Begin with context analysis: identify tech stack, languages, frameworks, and constraints from the information provided.
 2. Stay on scope: avoid speculative, over-engineered, or oversized ideas. Keep suggestions practical and grounded.
 3. Challenge and enrich: find gaps, question assumptions, surface hidden complexities and risks.
 4. Provide actionable next steps: offer specific advice, trade-offs, and implementation strategies.
@@ -286,6 +347,8 @@ TOPIC:
 Have another CLI review code and provide structured feedback.
 
 **When:** pre-PR review, code quality checks, catching bugs another perspective might see, security scanning
+
+**Include in your prompt:** Paste the code to review directly. For PR reviews, include the output of `git diff main...HEAD` or the relevant diff. Add: the language/framework, what the code does (one sentence), and any specific concerns (performance, security, correctness). For large files, extract the changed functions rather than sending the entire file.
 
 **Prompt template:**
 
@@ -335,6 +398,51 @@ CODE TO REVIEW:
 
 ---
 
+### bugcheck
+
+Get another model's diagnosis of a bug, error, or unexpected behavior.
+
+**When:** stuck on a bug, interpreting error traces, unexpected test failures, production incidents, race conditions
+
+**Include in your prompt:** Paste the full error trace or describe the unexpected behavior. Include the relevant code, what you expected to happen, and what actually happened. Mention what you've already tried. Run `git log --oneline -5` to show recent changes that might have introduced the bug.
+
+**Prompt template:**
+
+```
+You are an expert debugger who excels at root cause analysis. Your job is to diagnose the bug described below with precision and suggest concrete fixes.
+
+APPROACH:
+1. Read the error trace and code carefully before forming hypotheses
+2. Consider the most likely root causes first (recent changes, common pitfalls for this language/framework)
+3. Check for: off-by-one errors, null/undefined references, race conditions, incorrect assumptions about API contracts, missing error handling
+4. If the bug could have multiple causes, rank them by likelihood
+5. Provide a specific fix for each hypothesis, not generic advice
+
+OUTPUT FORMAT:
+## Most Likely Cause
+One-paragraph diagnosis with specific line/location reference.
+
+## Suggested Fix
+Concrete code change or configuration fix.
+
+## Alternative Hypotheses
+If applicable, list 1-2 other possible causes with lower likelihood.
+
+## What to Check Next
+Specific debugging steps if the primary fix doesn't resolve the issue.
+
+BUG REPORT:
+<ERROR TRACE AND/OR SYMPTOM DESCRIPTION>
+
+RELEVANT CODE:
+<CODE>
+
+WHAT WAS TRIED:
+<PREVIOUS ATTEMPTS>
+```
+
+---
+
 ## Error handling
 
 | Situation | Action |
@@ -346,6 +454,17 @@ CODE TO REVIEW:
 | Empty or unparseable output | Tell the user the response was empty. Suggest retrying. |
 | Exit code 42 (Gemini) | Input error — check prompt formatting. (May vary by CLI version) |
 | Exit code 53 (Gemini) | Turn limit exceeded — simplify the request. (May vary by CLI version) |
+| Oz CLI not on PATH | Tell the user: "Oz CLI is not on PATH. Inside Warp Terminal it is available automatically. In other terminals, add `/Applications/Warp.app/Contents/Resources/bin` to PATH." |
+| Oz exit code non-zero | Show the error output. Exit codes are not documented; treat any non-zero exit as a failure. |
+
+## Prompt safety
+
+When constructing shell commands, the prompt becomes a shell argument. To avoid shell injection:
+- Escape or remove shell metacharacters (`"`, `'`, `` ` ``, `$`, `\`, `!`) from the prompt before interpolation.
+- Prefer single quotes around the prompt argument where the CLI supports it, as single quotes prevent variable expansion.
+- If the prompt contains single quotes, escape them (`'\''`) or use a heredoc/tempfile approach.
+- Never pass unsanitized user input directly into a shell command string.
+- The target CLIs run in restricted modes where available (Codex: `read-only`, Claude: `plan` mode), but Gemini and Oz do not currently offer equivalent sandbox flags — exercise extra caution with those targets.
 
 ## Tips
 
@@ -355,4 +474,7 @@ CODE TO REVIEW:
 - For council, run multiple CLI calls in parallel to save time.
 - To include code, paste it directly into the prompt. The target CLI can only access files if it shares the same filesystem.
 - If Gemini hits 429/capacity errors repeatedly, pass `-m <model>` with a specific model name to override the default.
-- All three CLIs support model override flags. Use them when you need a specific model for quality or cost reasons.
+- All four CLIs support model override flags. Use them when you need a specific model for quality or cost reasons.
+- Oz CLI may not be on PATH by default outside Warp Terminal. If you get "command not found", see the Oz CLI reference section for PATH setup.
+- Oz CLI authenticates via `oz login` (interactive) or `WARP_API_KEY` env var (headless/CI). Ensure authentication is set up before calling Oz.
+- Oz can load pal-council directly via `--skill pal-council`, which provides the skill as base context for the agent.
